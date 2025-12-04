@@ -3,7 +3,7 @@ pipeline {
 
     tools {
         jdk 'jdk'
-        nodejs 'node18'   // FIXED: using stable Node.js version
+        nodejs 'node18'
     }
 
     environment {
@@ -12,23 +12,25 @@ pipeline {
 
     stages {
 
-        stage('clean workspace') {
+        stage('Clean Workspace') {
             steps {
-                cleanWs()  // FIXED typo
+                cleanWs()
             }
         }
 
         stage('Checkout from Git') {
             steps {
-                git branch: 'main', credentialsId: 'github-token', url: 'https://github.com/imranafset/starbucks-app.git'
+                git branch: 'main',
+                    credentialsId: 'github-token',
+                    url: 'https://github.com/imranafset/starbucks-app.git'
             }
         }
 
-        stage("Sonarqube Analysis ") {
+        stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('sonarqube') {
+                withSonarQubeEnv('sonarqube') {     // <-- FIXED HERE
                     sh '''
-                        $SCANNER_HOME/bin/sonar-scanner \
+                        ${SCANNER_HOME}/bin/sonar-scanner \
                         -Dsonar.projectName=starbucks \
                         -Dsonar.projectKey=starbucks \
                         -Dsonar.sources=.
@@ -37,7 +39,7 @@ pipeline {
             }
         }
 
-        stage("quality gate") {
+        stage('Quality Gate') {
             steps {
                 script {
                     waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token'
@@ -51,13 +53,13 @@ pipeline {
             }
         }
 
-        stage('TRIVY FS SCAN') {
+        stage('TRIVY FS Scan') {
             steps {
                 sh "trivy fs . > trivyfs.txt"
             }
         }
 
-        stage("Docker Build & Push") {
+        stage('Docker Build & Push') {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
@@ -69,14 +71,15 @@ pipeline {
             }
         }
 
-        stage("TRIVY") {
+        stage('TRIVY Image Scan') {
             steps {
                 sh "trivy image faizalaccount/starbucks:latest > trivyimage.txt"
             }
         }
 
-        stage('App Deploy to Docker container') {
+        stage('Deploy App to Docker Container') {
             steps {
+                sh 'docker rm -f starbucks || true'
                 sh 'docker run -d --name starbucks -p 3000:3000 faizalaccount/starbucks:latest'
             }
         }
@@ -84,20 +87,20 @@ pipeline {
 
     post {
         always {
-            dir('.') {   // FIX: ensures workspace exists
+            dir('.') {
                 script {
                     def buildStatus = currentBuild.currentResult
-                    def buildUser = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause')[0]?.userId ?: 'Github User'
+                    def buildUser = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause')[0]?.userId ?: 'GitHub User'
 
                     emailext(
                         subject: "Pipeline ${buildStatus}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                         body: """
-                            <p>This is a Jenkins starbucks CICD pipeline status.</p>
-                            <p>Project: ${env.JOB_NAME}</p>
-                            <p>Build Number: ${env.BUILD_NUMBER}</p>
-                            <p>Build Status: ${buildStatus}</p>
-                            <p>Started by: ${buildUser}</p>
-                            <p>Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                            <p>This is an automated Jenkins CI/CD pipeline report.</p>
+                            <p><strong>Project:</strong> ${env.JOB_NAME}</p>
+                            <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
+                            <p><strong>Build Status:</strong> ${buildStatus}</p>
+                            <p><strong>Started by:</strong> ${buildUser}</p>
+                            <p><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
                         """,
                         to: 'mi3081557@gmail.com',
                         from: 'mi3081557@gmail.com',
