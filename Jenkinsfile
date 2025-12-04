@@ -26,10 +26,13 @@ pipeline {
 
         stage("Sonarqube Analysis ") {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh '''$SCANNER_HOME/bin/sonar-scanner \
-                    -Dsonar.projectName=starbucks \
-                    -Dsonar.projectKey=starbucks'''
+                withSonarQubeEnv('sonarqube') {
+                    sh '''
+                        $SCANNER_HOME/bin/sonar-scanner \
+                        -Dsonar.projectName=starbucks \
+                        -Dsonar.projectKey=starbucks \
+                        -Dsonar.sources=.
+                    '''
                 }
             }
         }
