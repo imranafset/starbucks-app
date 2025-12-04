@@ -2,7 +2,7 @@ pipeline{
     agent any
     tools{
         jdk 'jdk'
-        nodejs 'node17'
+        nodejs 'node18'
     }
     environment {
         SCANNER_HOME=tool 'sonar-scanner'
@@ -68,6 +68,7 @@ pipeline{
     }
     post {
     always {
+      dir('.') {   // FIX: ensures workspace exists
         script {
             def buildStatus = currentBuild.currentResult
             def buildUser = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause')[0]?.userId ?: 'Github User'
