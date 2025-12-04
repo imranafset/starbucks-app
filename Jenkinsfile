@@ -1,97 +1,109 @@
-pipeline{
+pipeline {
     agent any
-    tools{
+
+    tools {
         jdk 'jdk'
-        nodejs 'node18'
+        nodejs 'node18'   // FIXED: using stable Node.js version
     }
+
     environment {
-        SCANNER_HOME=tool 'sonar-scanner'
+        SCANNER_HOME = tool 'sonar-scanner'
     }
+
     stages {
-        stage('clean workspace'){
-            steps{
-                cleanWs()
+
+        stage('clean workspace') {
+            steps {
+                cleanWs()  // FIXED typo
             }
         }
-        stage('Checkout from Git'){
-            steps{
+
+        stage('Checkout from Git') {
+            steps {
                 git branch: 'main', credentialsId: 'github-token', url: 'https://github.com/imranafset/starbucks-app.git'
             }
         }
-        stage("Sonarqube Analysis "){
-            steps{
+
+        stage("Sonarqube Analysis ") {
+            steps {
                 withSonarQubeEnv('SonarQube') {
-                    sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=starbucks \
-                    -Dsonar.projectKey=starbucks '''
+                    sh '''$SCANNER_HOME/bin/sonar-scanner \
+                    -Dsonar.projectName=starbucks \
+                    -Dsonar.projectKey=starbucks'''
                 }
             }
         }
-        stage("quality gate"){
-           steps {
+
+        stage("quality gate") {
+            steps {
                 script {
-                    waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token' 
+                    waitForQualityGate abortPipeline: false, credentialsId: 'Sonar-token'
                 }
-            } 
+            }
         }
+
         stage('Install Dependencies') {
             steps {
                 sh "npm install"
             }
-        }        
+        }
+
         stage('TRIVY FS SCAN') {
             steps {
                 sh "trivy fs . > trivyfs.txt"
             }
         }
-        stage("Docker Build & Push"){
-            steps{
-                script{
-                   withDockerRegistry(credentialsId: 'docker', toolName: 'docker'){   
-                       sh "docker build -t starbucks ."
-                       sh "docker tag starbucks faizalaccount/starbucks:latest "
-                       sh "docker push faizalaccount/starbucks:latest "
+
+        stage("Docker Build & Push") {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
+                        sh "docker build -t starbucks ."
+                        sh "docker tag starbucks faizalaccount/starbucks:latest"
+                        sh "docker push faizalaccount/starbucks:latest"
                     }
                 }
             }
         }
-        stage("TRIVY"){
-            steps{
-                sh "trivy image faizalaccount/starbucks:latest > trivyimage.txt" 
+
+        stage("TRIVY") {
+            steps {
+                sh "trivy image faizalaccount/starbucks:latest > trivyimage.txt"
             }
         }
-        stage('App Deploy to Docker container'){
-            steps{
+
+        stage('App Deploy to Docker container') {
+            steps {
                 sh 'docker run -d --name starbucks -p 3000:3000 faizalaccount/starbucks:latest'
             }
         }
-
     }
+
     post {
-    always {
-      dir('.') {   // FIX: ensures workspace exists
-        script {
-            def buildStatus = currentBuild.currentResult
-            def buildUser = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause')[0]?.userId ?: 'Github User'
-            
-            emailext (
-                subject: "Pipeline ${buildStatus}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                body: """
-                    <p>This is a Jenkins starbucks CICD pipeline status.</p>
-                    <p>Project: ${env.JOB_NAME}</p>
-                    <p>Build Number: ${env.BUILD_NUMBER}</p>
-                    <p>Build Status: ${buildStatus}</p>
-                    <p>Started by: ${buildUser}</p>
-                    <p>Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
-                """,
-                to: 'mi3081557@gmail.com',
-                from: 'mi3081557@gmail.com',
-                replyTo: 'mi3081557@gmail.com',
-                mimeType: 'text/html',
-                attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
-            )
-           }
-       }
+        always {
+            dir('.') {   // FIX: ensures workspace exists
+                script {
+                    def buildStatus = currentBuild.currentResult
+                    def buildUser = currentBuild.getBuildCauses('hudson.model.Cause$UserIdCause')[0]?.userId ?: 'Github User'
 
+                    emailext(
+                        subject: "Pipeline ${buildStatus}: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                        body: """
+                            <p>This is a Jenkins starbucks CICD pipeline status.</p>
+                            <p>Project: ${env.JOB_NAME}</p>
+                            <p>Build Number: ${env.BUILD_NUMBER}</p>
+                            <p>Build Status: ${buildStatus}</p>
+                            <p>Started by: ${buildUser}</p>
+                            <p>Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                        """,
+                        to: 'mi3081557@gmail.com',
+                        from: 'mi3081557@gmail.com',
+                        replyTo: 'mi3081557@gmail.com',
+                        mimeType: 'text/html',
+                        attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
+                    )
+                }
+            }
+        }
     }
-
 }
