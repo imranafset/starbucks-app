@@ -103,6 +103,8 @@ pipeline {
                             <p><strong>Build URL:</strong> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
                         """,
                         to: 'mi3081557@gmail.com',
+                        from: 'mi3081557@gmail.com',
+                        replyTo: 'mi3081557@gmail.com',
                         mimeType: 'text/html',
                         attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
                     )
