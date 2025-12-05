@@ -67,7 +67,7 @@ pipeline{
                     kubectl config view
 
                     echo "Deploying application to KS..."
-                    kubectl apply -f /root/starbucks-app/kubernetes/manifest.yml
+                    kubectl apply -f kubernetes/manifest.yml
                     
                     echo "Verifying deployment..."
                     kubectl get pods
@@ -96,10 +96,8 @@ pipeline{
                     <p>Build URL: <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
                 """,
                 to: 'mi3081557@gmail.com',
-                from: 'mi3081557@gmail.com',
-                replyTo: 'mi3081557@gmail.com',
-                mimeType: 'text/html',
-                attachmentsPattern: 'trivyfs.txt,trivyimage.txt'
+                mimeType: 'text/plain',
+                attachmentsPattern: ''
             )
            }
        }
